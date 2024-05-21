@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node dist/app.js",
     "build": "tsc",
-    "dev": "nodemon src/app.ts",
+    "dev": "nodemon -r dotenv/config src/app.ts",
     "prepare": "npm run build"
   },
   "keywords": [],
@@ -30,6 +30,7 @@
     "body-parser": "^1.20.2",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "raw-body": "^2.5.2",
     "stripe": "^15.7.0"
   }
 }
