@@ -30,6 +30,33 @@ export const createSubscription = async (req: Request, res: Response) => {
   }
 };
 
+export const updateSubscritionPlan = async (req: Request, res: Response) => {
+  try {
+    const { subscriptionId, planId } = req.body;
+
+    const currentPlan = await stripe.subscriptions.retrieve(subscriptionId);
+
+    if (!currentPlan) {
+      res.status(404).json({
+        message: 'Subscription not found',
+      });
+    }
+
+    const currentPlanId = currentPlan.items.data[0].id;
+
+    const subscription = await stripe.subscriptions.update(subscriptionId, {
+      items: [{ id: currentPlanId, plan: planId }],
+    });
+
+    res.status(200).json(subscription);
+  } catch (error) {
+    const typedError = error as Error;
+    res.status(500).json({
+      message: typedError.message,
+    });
+  }
+};
+
 export const handleWebhook = (req: Request, res: Response) => {
   const sig = req.headers['stripe-signature'];
 
