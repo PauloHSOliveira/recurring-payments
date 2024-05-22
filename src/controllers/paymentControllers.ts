@@ -57,6 +57,29 @@ export const updateSubscritionPlan = async (req: Request, res: Response) => {
   }
 };
 
+export const cancelSubscription = async (req: Request, res: Response) => {
+  try {
+    const { subscriptionId } = req.body;
+
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+
+    if (!subscription) {
+      res.status(404).json({
+        message: 'Subscription not found',
+      });
+    }
+
+    await stripe.subscriptions.cancel(subscriptionId);
+
+    res.status(200).json(subscription);
+  } catch (error) {
+    const typedError = error as Error;
+    res.status(500).json({
+      message: typedError.message,
+    });
+  }
+};
+
 export const handleWebhook = (req: Request, res: Response) => {
   const sig = req.headers['stripe-signature'];
 
@@ -79,6 +102,9 @@ export const handleWebhook = (req: Request, res: Response) => {
     case 'invoice.payment_failed':
       handlePaymentFailed(paymentIntent);
       break;
+    case 'invoice.updated':
+      handlePaymentUpdated(paymentIntent);
+      break;
     default:
       console.log(`Unhandled event type ${event.type}`);
   }
@@ -91,4 +117,8 @@ const handlePaymentSucceeded = (paymentIntent: unknown) => {
 
 const handlePaymentFailed = (paymentIntent: unknown) => {
   console.log('Payment failed', paymentIntent);
+};
+
+const handlePaymentUpdated = (paymentIntent: unknown) => {
+  console.log('Payment updated', paymentIntent);
 };
