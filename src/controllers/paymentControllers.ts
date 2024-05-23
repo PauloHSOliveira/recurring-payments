@@ -1,10 +1,12 @@
 import { Request, Response } from 'express';
 import stripe from '../services/stripe';
+import Stripe from 'stripe';
+import { sendEmail } from '../services/emailService';
 
 export const createSubscription = async (req: Request, res: Response) => {
   try {
     const { email, paymentMethodId, planId } = req.body;
-
+    console.log(paymentMethodId);
     const customer = await stripe.customers.create({
       email,
       payment_method: paymentMethodId,
@@ -89,11 +91,10 @@ export const handleWebhook = (req: Request, res: Response) => {
     event = stripe.webhooks.constructEvent(req.body, sig!, process.env.STRIPE_WEBHOOK_SECRET!);
   } catch (error) {
     console.log(error);
-    const typedError = error as Error;
-    return res.status(400).send(`Webhook Error: ${typedError.message}`);
+    return res.status(400).end();
   }
 
-  const paymentIntent = event.data.object;
+  const paymentIntent = event.data.object as Stripe.PaymentIntent;
 
   switch (event.type) {
     case 'invoice.payment_succeeded':
@@ -111,14 +112,52 @@ export const handleWebhook = (req: Request, res: Response) => {
   res.json({ received: true });
 };
 
-const handlePaymentSucceeded = (paymentIntent: unknown) => {
+const handlePaymentSucceeded = (paymentIntent: Stripe.PaymentIntent) => {
   console.log('Payment succeeded', paymentIntent);
+
+  const email = paymentIntent.receipt_email;
+
+  if (!email) {
+    throw new Error('Payment Success Email: User email not found');
+  }
+
+  sendEmail({
+    to: email,
+    subject: 'Payment succeeded',
+    text: 'Your payment was successful.',
+    html: '<strong>Your payment was successful.</strong>',
+  });
 };
 
-const handlePaymentFailed = (paymentIntent: unknown) => {
+const handlePaymentFailed = (paymentIntent: Stripe.PaymentIntent) => {
   console.log('Payment failed', paymentIntent);
+  const email = paymentIntent.receipt_email;
+
+  if (!email) {
+    throw new Error('Payment Failed Email: User email not found');
+  }
+
+  sendEmail({
+    to: email,
+    subject: 'Payment failed',
+    text: 'Your payment has failed.',
+    html: '<strong>Your payment has failed.</strong>',
+  });
 };
 
-const handlePaymentUpdated = (paymentIntent: unknown) => {
+const handlePaymentUpdated = (paymentIntent: Stripe.PaymentIntent) => {
   console.log('Payment updated', paymentIntent);
+
+  const email = paymentIntent.receipt_email;
+
+  if (!email) {
+    throw new Error('Payment Updated Email: User email not found');
+  }
+
+  sendEmail({
+    to: email,
+    subject: 'Payment updated',
+    text: 'Your payment was updated.',
+    html: '<strong>Your payment was updated.</strong>',
+  });
 };

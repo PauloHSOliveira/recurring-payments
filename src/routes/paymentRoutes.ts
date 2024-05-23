@@ -5,16 +5,16 @@ import {
   updateSubscritionPlan,
   cancelSubscription,
 } from '../controllers/paymentControllers';
-import verifyWebhook from '../middlewares/verifyWebhook';
+import bodyParser from 'body-parser';
 
 const router = Router();
 
 router.post('/subscribe', createSubscription);
 
-router.post('/update-plan', verifyWebhook, updateSubscritionPlan);
+router.post('/update-plan', updateSubscritionPlan);
 
 router.post('/cancel-plan', cancelSubscription);
 
-router.post('/webhook', verifyWebhook, handleWebhook);
+router.post('/webhook', bodyParser.raw({ type: 'application/json' }), handleWebhook);
 
 export default router;
