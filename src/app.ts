@@ -5,7 +5,9 @@ import paymentRoutes from './routes/paymentRoutes';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use('/api/payments/webhook', bodyParser.raw({ type: '*/*' }));
 app.use(bodyParser.json());
+
 app.use('/api/payments', paymentRoutes);
 
 app.listen(PORT, () => {
