@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
 import stripe from '../services/stripe';
-import Stripe from 'stripe';
 import { sendEmail } from '../services/emailService';
+import logger from '../middleware/logger';
 
 export const createSubscription = async (req: Request, res: Response) => {
   try {
     const { email, paymentMethodId, planId } = req.body;
-    console.log(paymentMethodId);
+
     const customer = await stripe.customers.create({
       email,
       payment_method: paymentMethodId,
@@ -26,6 +26,7 @@ export const createSubscription = async (req: Request, res: Response) => {
     res.status(200).json(subscription);
   } catch (error) {
     const typedError = error as Error;
+    logger.error(typedError.message);
     res.status(500).json({
       message: typedError.message,
     });
@@ -38,12 +39,6 @@ export const updateSubscritionPlan = async (req: Request, res: Response) => {
 
     const currentPlan = await stripe.subscriptions.retrieve(subscriptionId);
 
-    if (!currentPlan) {
-      res.status(404).json({
-        message: 'Subscription not found',
-      });
-    }
-
     const currentPlanId = currentPlan.items.data[0].id;
 
     const subscription = await stripe.subscriptions.update(subscriptionId, {
@@ -53,6 +48,9 @@ export const updateSubscritionPlan = async (req: Request, res: Response) => {
     res.status(200).json(subscription);
   } catch (error) {
     const typedError = error as Error;
+
+    logger.error(typedError.message);
+
     res.status(500).json({
       message: typedError.message,
     });
@@ -65,17 +63,12 @@ export const cancelSubscription = async (req: Request, res: Response) => {
 
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
-    if (!subscription) {
-      res.status(404).json({
-        message: 'Subscription not found',
-      });
-    }
-
     await stripe.subscriptions.cancel(subscriptionId);
 
     res.status(200).json(subscription);
   } catch (error) {
     const typedError = error as Error;
+    logger.error(typedError.message);
     res.status(500).json({
       message: typedError.message,
     });
@@ -94,7 +87,7 @@ export const handleWebhook = (req: Request, res: Response) => {
     return res.status(400).end();
   }
 
-  const paymentIntent = event.data.object as Stripe.PaymentIntent;
+  const paymentIntent = event.data.object;
 
   switch (event.type) {
     case 'invoice.payment_succeeded':
@@ -107,15 +100,14 @@ export const handleWebhook = (req: Request, res: Response) => {
       handlePaymentUpdated(paymentIntent);
       break;
     default:
-      console.log(`Unhandled event type ${event.type}`);
+      logger.warn(`Unhandled event type ${event.type}`);
   }
   res.json({ received: true });
 };
 
-const handlePaymentSucceeded = (paymentIntent: Stripe.PaymentIntent) => {
-  console.log('Payment succeeded', paymentIntent);
-
-  const email = paymentIntent.receipt_email;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const handlePaymentSucceeded = (paymentIntent: any) => {
+  const email = paymentIntent.customer_email;
 
   if (!email) {
     throw new Error('Payment Success Email: User email not found');
@@ -129,9 +121,9 @@ const handlePaymentSucceeded = (paymentIntent: Stripe.PaymentIntent) => {
   });
 };
 
-const handlePaymentFailed = (paymentIntent: Stripe.PaymentIntent) => {
-  console.log('Payment failed', paymentIntent);
-  const email = paymentIntent.receipt_email;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const handlePaymentFailed = (paymentIntent: any) => {
+  const email = paymentIntent.customer_email;
 
   if (!email) {
     throw new Error('Payment Failed Email: User email not found');
@@ -145,10 +137,9 @@ const handlePaymentFailed = (paymentIntent: Stripe.PaymentIntent) => {
   });
 };
 
-const handlePaymentUpdated = (paymentIntent: Stripe.PaymentIntent) => {
-  console.log('Payment updated', paymentIntent);
-
-  const email = paymentIntent.receipt_email;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const handlePaymentUpdated = (paymentIntent: any) => {
+  const email = paymentIntent.customer_email;
 
   if (!email) {
     throw new Error('Payment Updated Email: User email not found');
